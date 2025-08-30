@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lukiboy</title>
+  <style>
+    body { margin: 0; background: #87ceeb; }
+    canvas { display: block; margin: auto; }
+    #ui { position: absolute; top: 10px; left: 10px; font-family: Arial; color: white; font-size: 20px; }
+    .btn {
+      position: absolute; bottom: 20px; padding: 10px 20px;
+      background: rgba(0,0,0,0.5); color: white; border-radius: 10px;
+      font-size: 18px; text-align: center; user-select: none;
+    }
+    #left { left: 20px; }
+    #right { left: 100px; }
+    #attack { right: 20px; }
+    #dash { right: 100px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.js"></script>
+</head>
+<body>
+
+<div id="ui">❤️ Vidas: 3 | ⭐ Puntos: 0</div>
+<div id="left" class="btn">⬅️</div>
+<div id="right" class="btn">➡️</div>
+<div id="dash" class="btn">🛼</div>
+<div id="attack" class="btn">🥋</div>
+
+<script>
+let game;
+let vidas = 3, puntos = 0;
+let cursors, player, enemies, attackKey, dashKey;
+let speed = 160;
+
+class MainScene extends Phaser.Scene {
+  constructor(){ super("MainScene"); }
+
+  preload(){}
+
+  create(){
+    this.add.rectangle(400,300,800,600,0x87ceeb); // fondo azul cielo
+    this.add.rectangle(400,590,800,20,0x555555);  // piso gris
+
+    // Lukas
+    player = this.add.rectangle(100,500,40,60,0x000000); // negro = cabello
+    this.physics.add.existing(player);
+    player.body.setCollideWorldBounds(true);
+
+    // Enemigos
+    enemies = this.physics.add.group();
+    this.time.addEvent({ delay: 2000, loop: true, callback: ()=> {
+      let e = this.add.rectangle(800,500,40,60,0xff0000);
+      enemies.add(e);
+      e.body.setVelocityX(-100);
+    }});
+
+    // Controles
+    cursors = this.input.keyboard.createCursorKeys();
+    attackKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    dashKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
+
+    // Colisión con enemigos
+    this.physics.add.overlap(player, enemies, this.hitEnemy, null, this);
+
+    // Controles táctiles
+    this.initTouch();
+  }
+
+  update(){
+    player.body.setVelocityX(0);
+
+    if (cursors.left.isDown) player.body.setVelocityX(-speed);
+    if (cursors.right.isDown) player.body.setVelocityX(speed);
+
+    if (dashKey.isDown) player.body.setVelocityX(player.body.velocity.x * 1.5);
+
+    if (Phaser.Input.Keyboard.JustDown(attackKey)) this.attack();
+  }
+
+  attack(){
+    enemies.children.each(e=>{
+      if (Phaser.Math.Distance.Between(player.x, player.y, e.x, e.y) < 60){
+        e.destroy();
+        puntos += 10;
+        this.updateUI();
+      }
+    });
+  }
+
+  hitEnemy(player, enemy){
+    enemy.destroy();
+    vidas--;
+    this.updateUI();
+    if (vidas<=0){
+      this.add.text(300,300,"GAME OVER",{fontSize:"40px",fill:"#fff"});
+      this.scene.pause();
+    }
+  }
+
+  updateUI(){
+    document.getElementById("ui").innerText = `❤️ Vidas: ${vidas} | ⭐ Puntos: ${puntos}`;
+  }
+
+  initTouch(){
+    const left = document.getElementById("left");
+    const right = document.getElementById("right");
+    const dash = document.getElementById("dash");
+    const attack = document.getElementById("attack");
+
+    left.onpointerdown = ()=> cursors.left.isDown = true;
+    left.onpointerup = ()=> cursors.left.isDown = false;
+
+    right.onpointerdown = ()=> cursors.right.isDown = true;
+    right.onpointerup = ()=> cursors.right.isDown = false;
+
+    dash.onpointerdown = ()=> dashKey.isDown = true;
+    dash.onpointerup = ()=> dashKey.isDown = false;
+
+    attack.onpointerdown = ()=> this.attack();
+  }
+}
+
+window.onload = ()=>{
+  game = new Phaser.Game({
+    type: Phaser.AUTO,
+    width: 800, height: 600,
+    physics: { default:"arcade", arcade:{ gravity:{y:0} }},
+    scene: [MainScene]
+  });
+}
+</script>
+</body>
+</html>
